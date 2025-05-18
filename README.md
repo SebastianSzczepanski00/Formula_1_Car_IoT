@@ -1,6 +1,6 @@
-# #####################
-# \### Formula 1 IoT ###
-# #####################
+
+
+# Formula 1 IoT
 This is my python project with usage of docker in practise. (The project is still under construction.)
 Main project assumptions:
 - two docker containers communite together in bi-directional way
@@ -10,13 +10,13 @@ Main project assumptions:
 - there are three levels of vehicle's state: 0: Normal, 1: Warning and 2: Error
 
 Sequence communication diagram:
-
+<pre>
    /====\                                    |"""""""""""""""|
    {}/\{} ----- 1. Vehicle parameters -----> |               | 
     |F1|                                     | Pit Stop Crew |
    {}\/{} <--- 2. Parameters evaluation ---- |               |
     [__]                                     |_______________|
-
+</pre>
 
 How to run the project in ./formula_1_iot directory (steps):
 1. run script file: source_files.bash (Linux) or source_files.cmd (Windows)
