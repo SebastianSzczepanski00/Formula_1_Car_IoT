@@ -1,0 +1,21 @@
+- engine_temp_limits:
+    absolute_min: -40.0
+    critical_flag_min: 0.0
+    warning_flag_min: 10.0
+    warning_flag_max: 70.0
+    critical_flag_max: 75.0
+    absolute_max: 80.0
+    unit: Celsius degrees
+- tires_pressure_limits:
+    absolute_min: 0.0
+    critical_flag_min: 20.0
+    warning_flag_min: 25.0
+    warning_flag_max: 30.0
+    critical_flag_max: 35.0
+    absolute_max: 40.0
+    unit: PSI
+- velocity_limits:
+    absolute_min: -70.0
+    warning_flag_max: 330.0
+    absolute_max: 350.0
+    unit: km/h

@@ -1,9 +1,8 @@
 import time
 import requests
 import threading
-import logging
 from formula_1_iot_utils import Formula1CarDataEvaluation
-from flask import Flask, jsonify, Response
+from flask import Flask
 
 pit_stop = Flask(__name__)
 
@@ -14,6 +13,9 @@ def pit_stop_interface():
             res = requests.get('http://formula_1_car:5000')
             data = res.json()
             pit_stop.logger.info(f"[Pit Stop] Got from Formula 1 Car: {data}")
+
+            evaluation = Formula1CarDataEvaluation(data["id"])
+            return evaluation.convert_condition_report_to_message(data)
         except Exception as e:
             pit_stop.logger.error(f"[Pit Stop] Error: {e}")
         time.sleep(1) 
