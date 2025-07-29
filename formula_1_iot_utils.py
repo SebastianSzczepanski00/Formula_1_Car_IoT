@@ -1,4 +1,6 @@
 from __future__ import annotations
+import yaml
+import json
 from enum import Enum
 from flask import jsonify, Response
 from datetime import datetime
@@ -99,23 +101,26 @@ class Formula1CarData:
             Pressure of the rear left tire in psi. Default value is None.
 
         """
-        _min_pressure = 0.0
-        _max_pressure = 40.0
-        if front_right:
-            assert front_right >= _min_pressure and front_right <= _max_pressure
-            self._front_right = front_right
+        with open('/constants.yaml', 'r') as file:
+            constants = yaml.safe_load(file)
+            _min_pressure = constants[1]["tires_pressure_limits"]["absolute_min"]
+            _max_pressure = constants[1]["tires_pressure_limits"]["absolute_max"]
 
-        if front_left:
-            assert front_left >= _min_pressure and front_left <= _max_pressure
-            self._front_left = front_left
+            if front_right:
+                assert front_right >= _min_pressure and front_right <= _max_pressure
+                self._front_right = front_right
 
-        if rear_right:
-            assert rear_right >= _min_pressure and rear_right <= _max_pressure
-            self._rear_right = rear_right
+            if front_left:
+                assert front_left >= _min_pressure and front_left <= _max_pressure
+                self._front_left = front_left
 
-        if rear_left:
-            assert rear_left >= _min_pressure and rear_left <= _max_pressure
-            self._rear_left = rear_left
+            if rear_right:
+                assert rear_right >= _min_pressure and rear_right <= _max_pressure
+                self._rear_right = rear_right
+
+            if rear_left:
+                assert rear_left >= _min_pressure and rear_left <= _max_pressure
+                self._rear_left = rear_left
 
     def set_engine_temperature(self, engine_temperature: float) -> None:
         """Set current temperature of the vehicle's engine in Celsius degrees.
@@ -126,10 +131,12 @@ class Formula1CarData:
             Current temperature of the vehicle's engine in Celsius degrees.
 
         """
-        _min_temp = -40.0
-        _max_temp = 60.0
-        assert engine_temperature >= _min_temp and engine_temperature <= _max_temp
-        self._engine_temperature = engine_temperature
+        with open('/constants.yaml', 'r') as file:
+            constants = yaml.safe_load(file)
+            _min_temp = constants[0]["engine_temp_limits"]["absolute_min"]
+            _max_temp = constants[0]["engine_temp_limits"]["absolute_max"]
+            assert engine_temperature >= _min_temp and engine_temperature <= _max_temp
+            self._engine_temperature = engine_temperature
 
     def get_engine_temperature(self) -> float:
         """Get current temperature of the vehicle's engine in Celsius degrees.
@@ -176,6 +183,11 @@ class Formula1CarDataEvaluation:
 
         """
         self._vehicle_id = id
+        self._vehicles_condition = VehiclesCondition.NORMAL.value
+        self._condition_message = {
+            'id': self._vehicle_id,
+            'vehicles_condition': self._vehicles_condition
+        }
 
     @property
     def vehicles_condition(self) -> int:
@@ -187,17 +199,102 @@ class Formula1CarDataEvaluation:
             Condition of the Formula 1 Car. Possible values are: 
             0 - Normal
             1 - Warning
-            2 - Fatal Error
+            2 - Critical Error
 
         """
         assert self._vehicles_condition in {VehiclesCondition.NORMAL.value,
                                         VehiclesCondition.WARNING.value,
-                                        VehiclesCondition.FATAL_ERROR.value}
+                                        VehiclesCondition.CRITICAL_ERROR.value}
         return self._vehicles_condition
+
+    @property
+    def condition_message(self) -> dict[str, int]:
+        """Condition message of the Formula 1 Car.
+
+        Returns
+        -------
+        self._condition_message: dict[str, int]
+            Condition message of the Formula 1 Car.
+
+        """
+        assert set(self._condition_message.keys()) == {'id', 'vehicles_condition'}
+        return self._condition_message
+
+    def evaluate_vehicle_condition(self, vehicle_data: json) -> dict[str, int]:
+        """Evaluate the condition of the Formula 1 Car.
+
+        Parameters
+        ----------
+        vehicle_data: Formula1CarData
+            Data of the Formula 1 Car to be evaluated.
+
+        """
+        with open('/constants.yaml', 'r') as file:
+            constants = yaml.safe_load(file)
+            _critical_flag_min_pressure = constants[1]["tires_pressure_limits"]["critical_flag_min"]
+            _warning_flag_min_pressure = constants[1]["tires_pressure_limits"]["warning_flag_min"]
+            _warning_flag_max_pressure = constants[1]["tires_pressure_limits"]["warning_flag_max"]
+            _critical_flag_max_pressure = constants[1]["tires_pressure_limits"]["critical_flag_max"]
+            _warning_flag_max_velocity = constants[2]["velocity_limits"]["warning_flag_max"]
+            _critical_flag_min_engine_temperature = constants[0]["engine_temp_limits"]["critical_flag_min"]
+            _warning_flag_min_engine_temperature = constants[0]["engine_temp_limits"]["warning_flag_min"]
+            _warning_flag_max_engine_temperature = constants[0]["engine_temp_limits"]["warning_flag_max"]
+            _critical_flag_max_engine_temperature = constants[0]["engine_temp_limits"]["critical_flag_max"]
+
+            _tires = ["front_right", "front_left", "rear_right", "rear_left"]
+
+            if any(vehicle_data[_tire] < _critical_flag_min_pressure for _tire in _tires):
+                self._vehicles_condition = VehiclesCondition.CRITICAL_ERROR.value
+                return self.vehicles_condition
+
+            elif any(vehicle_data[_tire] > _critical_flag_max_pressure for _tire in _tires):
+                self._vehicles_condition = VehiclesCondition.CRITICAL_ERROR.value
+                return self.vehicles_condition
+
+            elif vehicle_data["engine_temperature"] < _critical_flag_min_engine_temperature or \
+                 vehicle_data["engine_temperature"] > _critical_flag_max_engine_temperature:
+                self._vehicles_condition = VehiclesCondition.CRITICAL_ERROR.value
+                return self.vehicles_condition
+
+            elif any(vehicle_data[_tire] < _warning_flag_min_pressure for _tire in _tires):
+                self._vehicles_condition = VehiclesCondition.WARNING.value
+                return self.vehicles_condition
+
+            elif any(vehicle_data[_tire] > _warning_flag_max_pressure for _tire in _tires):
+                self._vehicles_condition = VehiclesCondition.WARNING.value
+                return self.vehicles_condition
+
+            elif vehicle_data["engine_temperature"] < _warning_flag_min_engine_temperature or \
+                 vehicle_data["engine_temperature"] > _warning_flag_max_engine_temperature:
+                self._vehicles_condition = VehiclesCondition.WARNING.value
+                return self.vehicles_condition
+
+            elif vehicle_data["velocity"] > _warning_flag_max_velocity:
+                self._vehicles_condition = VehiclesCondition.WARNING.value
+                return self.vehicles_condition
+
+    def convert_condition_report_to_message(self, vehicle_data: json) -> dict[str, int]:
+        """Convert condition report to message.
+
+        Parameters
+        ---------- 
+        vehicle_data: json
+            Data of the Formula 1 Car to be evaluated.
+
+        Returns
+        -------
+        message: dict[str, int]
+            Message with the condition of the Formula 1 Car.
+
+        """
+        self.evaluate_vehicle_condition(vehicle_data)
+        self._condition_message['id'] = self._vehicle_id
+        self._condition_message['vehicles_condition'] = self.vehicles_condition
+        return jsonify(self.condition_message)
 
 
 class VehiclesCondition(Enum):
     """Vehicle's Condition Enum class."""
     NORMAL = 0
     WARNING = 1
-    FATAL_ERROR = 2
+    CRITICAL_ERROR = 2

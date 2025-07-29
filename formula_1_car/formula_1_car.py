@@ -1,10 +1,10 @@
 from __future__ import annotations
-import random
+from random import uniform
 import threading
 import time
-from formula_1_iot_utils import CommunicationInterface, Formula1CarData
+from formula_1_iot_utils import Formula1CarData
 import requests
-from flask import Flask, Response, jsonify
+from flask import Flask
 
 formula_1_car = Flask(__name__)
 
@@ -23,13 +23,13 @@ def send_data():
 
     # Generate random data for the Formula 1 Car
     formula_1_car_data = Formula1CarData(id=1)
-    formula_1_car_data.set_velocity(random.uniform(min_velocity, max_velocity))
-    formula_1_car_data.set_tires_pressure(front_right=random.uniform(min_pressure, max_pressure),
-                                          front_left=random.uniform(min_pressure, max_pressure),
-                                          rear_right=random.uniform(min_pressure, max_pressure),
-                                          rear_left=random.uniform(min_pressure, max_pressure))
-    formula_1_car_data.set_engine_temperature(random.uniform(min_engine_temperature,
-                                                             max_engine_temperature))
+    formula_1_car_data.set_velocity(uniform(min_velocity, max_velocity))
+    formula_1_car_data.set_tires_pressure(front_right=uniform(min_pressure, max_pressure),
+                                          front_left=uniform(min_pressure, max_pressure),
+                                          rear_right=uniform(min_pressure, max_pressure),
+                                          rear_left=uniform(min_pressure, max_pressure))
+    formula_1_car_data.set_engine_temperature(uniform(min_engine_temperature,
+                                                      max_engine_temperature))
 
     # Send the data to the Pit Stop as JSON
     return formula_1_car_data.convert_data_to_message()
