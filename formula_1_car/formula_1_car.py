@@ -1,10 +1,13 @@
 from __future__ import annotations
-from random import uniform
+
 import threading
 import time
-from formula_1_iot_utils import Formula1CarData
+from random import uniform
+
 import requests
+import yaml
 from flask import Flask
+from formula_1_iot_utils import Formula1CarData, MessagesDisplay
 
 formula_1_car = Flask(__name__)
 
@@ -13,13 +16,16 @@ formula_1_car = Flask(__name__)
 def send_data():
     """Send data to the Pit Stop."""
 
+    time.sleep(1)
     # Define the ranges for tire pressure, velocity, and engine temperature
-    max_pressure = 40.0
-    min_pressure = 0.0
-    max_velocity = 350.0
-    min_velocity = 0.0
-    max_engine_temperature = 60.0
-    min_engine_temperature = -40.0
+    file = open('/constants.yaml', 'r')
+    constants = yaml.safe_load(file)
+    max_engine_temperature = constants[0]["engine_temp_limits"]["absolute_max"]
+    min_engine_temperature = constants[0]["engine_temp_limits"]["absolute_min"]
+    max_pressure = constants[1]["tires_pressure_limits"]["absolute_max"]
+    min_pressure = constants[1]["tires_pressure_limits"]["absolute_min"]
+    max_velocity = constants[2]["velocity_limits"]["absolute_max"]
+    min_velocity = constants[2]["velocity_limits"]["absolute_min"]
 
     # Generate random data for the Formula 1 Car
     formula_1_car_data = Formula1CarData(id=1)
@@ -36,14 +42,16 @@ def send_data():
 
 def formula_1_car_interface():
     while True:
+        time.sleep(1)
         try:
-            res = requests.get('http://pit_stop:5000')
-            data = res.json()
-            formula_1_car.logger.info(f"[Formula 1 Car] Got from Pit Stop: {data}")
+            with formula_1_car.app_context():
+                res = requests.get('http://pit_stop:5000', timeout=5)
+                data = res.json()
+                formula_1_car_condition = MessagesDisplay().display_formula_1_cars_condition(data)
+                formula_1_car.logger.info(f"[Formula 1 Car] Got from Pit Stop: {formula_1_car_condition}")
 
         except Exception as e:
             formula_1_car.logger.error(f"[Formula 1 Car] Error: {e}")
-        time.sleep(1)
 
 if __name__ == '__main__':
     threading.Thread(target=formula_1_car_interface, daemon=True).start()
