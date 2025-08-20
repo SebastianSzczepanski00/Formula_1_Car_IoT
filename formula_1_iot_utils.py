@@ -1,9 +1,11 @@
 from __future__ import annotations
-import yaml
+
 import json
-from enum import Enum
-from flask import jsonify, Response
 from datetime import datetime
+from enum import Enum
+
+import yaml
+from flask import jsonify
 
 
 class Formula1CarData:
@@ -71,7 +73,11 @@ class Formula1CarData:
             Velocity of the vehicle provided in kilometers per hour.
 
         """
-        assert velocity >= 0.0 and velocity <= 350.0
+        with open('/constants.yaml', 'r') as file:
+            constants = yaml.safe_load(file)
+            _max_velocity = constants[2]["velocity_limits"]["absolute_max"]
+            _min_velocity = constants[2]["velocity_limits"]["absolute_min"]
+            assert velocity >= _min_velocity and velocity <= _max_velocity
         self._velocity = velocity
 
     def get_velocity(self) -> float | None:
@@ -298,3 +304,50 @@ class VehiclesCondition(Enum):
     NORMAL = 0
     WARNING = 1
     CRITICAL_ERROR = 2
+
+
+class MessagesDisplay:
+    def __init__(self) -> None:
+        """Initialize MessagesDisplay object."""
+
+    def display_formula_1_cars_data(self, car_data: dict[str, float | None]) -> str:
+        """Display Formula 1 car's data.
+
+        Parameters
+        ----------
+        car_data: Formula1CarData
+            Data of the Formula 1 Car to be displayed.
+
+        Returns
+        -------
+        data_log: str
+            Log message with the data of the Formula 1 Car.
+
+        """
+        data_log = f"ID: {car_data["id"]}\n" \
+              f"Velocity: {car_data["velocity"]} km/h\n" \
+              f"Tires' Pressure:\n" \
+              f"  Front Right: {car_data["front_right"]} psi\n" \
+              f"  Front Left: {car_data["front_left"]} psi\n" \
+              f"  Rear Right: {car_data["rear_right"]} psi\n" \
+              f"  Rear Left: {car_data["rear_left"]} psi\n" \
+              f"Engine's Temperature: {car_data["engine_temperature"]} °C\n"
+        return data_log
+
+    def display_formula_1_cars_condition(self, car_condition: dict[str, float | None]) -> str:
+        """Display Formula 1 car's condition.
+
+        Parameters
+        ----------
+        car_condition: Formula1CarDataEvaluation
+            Condition of the Formula 1 Car to be displayed.
+
+        Returns
+        -------
+        condition_log: str
+            Log message with the condition of the Formula 1 Car.
+
+        """
+        condition_log = f"ID of the vehicle: {car_condition["id"]}\n" \
+                    f"Condition of the vehicle: {VehiclesCondition(car_condition["vehicles_condition"]).name}\n"
+        return condition_log
